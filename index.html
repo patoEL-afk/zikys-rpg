@@ -442,6 +442,30 @@ function attributeRoll(id,aid,inputValue){const a=findAgent(id),x=a?.attributes.
 function skillsTab(c,a){c.innerHTML=`<div class="panel"><div class="heading"><div><h2>PERÍCIAS DO PERSONAGEM</h2><div class="muted">Edite modificadores e role pela ficha.</div></div><button class="btn" onclick="addSkill('${a.id}')">＋ NOVA PERÍCIA</button></div><div class="skillgrid">${a.skills.map(s=>`<div class="skill"><div><strong>${esc(s.name)}</strong><div class="muted">Modificador</div><input type="number" value="${Number(s.value)}" onchange="setSkill('${a.id}','${s.id}',this.value)"></div><div class="btnrow"><button class="btn" onclick="skillRoll('${a.id}','${s.id}')">⚄ ROLAR</button><button class="btn red sm" onclick="deleteSkill('${a.id}','${s.id}')">×</button></div></div>`).join("")}</div></div>`}
 function addSkill(id){const n=prompt("Nome da perícia:");if(!n)return;findAgent(id).skills.push({id:uid(),name:n,value:Number(prompt("Modificador inicial:","0"))||0,attribute:""});saveDB();render()}
 function setSkill(id,sid,v){const a=findAgent(id),s=a.skills.find(x=>x.id===sid);if(s){s.value=Number(v)||0;saveDB()}}
+  window.skillRoll = function(id, sid) {
+  const a = findAgent(id);
+
+  if (!a) {
+    notify("Personagem não encontrado.");
+    return;
+  }
+
+  const s = (a.skills || []).find(x => x.id === sid);
+
+  if (!s) {
+    notify("Perícia não encontrada.");
+    return;
+  }
+
+  const modifier = Number(s.value) || 0;
+
+  doRoll(
+    20,
+    1,
+    modifier,
+    a.name + " • Perícia: " + s.name
+  );
+};
 function deleteSkill(id,sid){if(!confirm("Excluir perícia?"))return;const a=findAgent(id);a.skills=a.skills.filter(s=>s.id!==sid);saveDB();render()}
 function abilityForm(o={}){const name=prompt("Nome:",o.name||"");if(name===null||!name.trim())return null;const category=prompt("Categoria / elemento:",o.category||"");if(category===null)return null;const description=prompt("Descrição e efeito:",o.description||"");if(description===null)return null;const cost=prompt("Custo:",o.cost||"");if(cost===null)return null;const action=prompt("Tipo de ação:",o.action||"");if(action===null)return null;const range=prompt("Alcance:",o.range||"");if(range===null)return null;const duration=prompt("Duração:",o.duration||"");if(duration===null)return null;const requirements=prompt("Requisitos:",o.requirements||"");if(requirements===null)return null;return{id:o.id||uid(),name,category,description,cost,action,range,duration,requirements}}
 function abilitiesTab(c,a){c.innerHTML=`<div class="heading"><div><h2>HABILIDADES E PODERES</h2><div class="muted">Rituais, técnicas, talentos, magias e poderes.</div></div><button class="btn" onclick="addAbility('${a.id}')">＋ NOVA HABILIDADE</button></div>${a.abilities.length?a.abilities.map(h=>`<div class="entry"><div class="entrytop"><div class="entryname">${esc(h.name)}</div><span class="tag">${esc(h.category||"Personalizada")}</span></div><p class="muted">${esc(h.description)}</p><div class="muted">Custo: ${esc(h.cost||"—")} • Ação: ${esc(h.action||"—")} • Alcance: ${esc(h.range||"—")} • Duração: ${esc(h.duration||"—")}<br>Requisitos: ${esc(h.requirements||"—")}</div><div class="btnrow" style="margin-top:10px"><button class="btn sm gray" onclick="editAbility('${a.id}','${h.id}')">EDITAR</button><button class="btn sm gray" onclick="duplicateAbility('${a.id}','${h.id}')">DUPLICAR</button><button class="btn sm red" onclick="deleteAbility('${a.id}','${h.id}')">EXCLUIR</button></div></div>`).join(""):'<div class="empty">Nenhuma habilidade cadastrada.</div>'}`}
