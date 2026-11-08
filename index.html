@@ -523,6 +523,49 @@ textarea{min-height:90px;resize:vertical}
   color:var(--bright);
 }
 
+
+.sheet-center-menu{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:60vh;
+  padding:20px;
+}
+.sheet-center-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  max-width:420px;
+  width:100%;
+}
+.sheet-center-btn{
+  background:#1a1a22;
+  border:1px solid var(--line2);
+  color:var(--text);
+  padding:22px 12px;
+  border-radius:12px;
+  font-size:14px;
+  font-weight:600;
+  letter-spacing:.6px;
+}
+.sheet-center-btn:hover{
+  border-color:var(--purple);
+  background:#221a2a;
+  color:var(--bright);
+}
+.write-area{
+  background:#121218;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:16px;
+  min-height:180px;
+  color:var(--text);
+  outline:none;
+  white-space:pre-wrap;
+  line-height:1.5;
+}
+.write-area:focus{border-color:var(--purple)}
+
 @media (max-width:750px){
   html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important}
   #app,.layout,.main{width:100%!important;max-width:100%!important;min-width:0!important}
@@ -1061,10 +1104,20 @@ function renderAgent(root,a){
     ["inventario","INVENTÁRIO"]
   ];
   const current = window._sheetSection || "geral";
-  root.innerHTML=`<div class="heading"><div><button class="btn gray sm" onclick="backAgents()">← VOLTAR</button><div class="statusline">● SALVAMENTO AUTOMÁTICO</div></div><div class="btnrow"><button class="btn gray" onclick="exportOne('${a.id}')">EXPORTAR</button><button class="btn" onclick="shareAgentMenu('${a.id}')">COMPARTILHAR</button>${a.owner===operator?`<button class="btn red sm" onclick="deleteAgent('${a.id}')">EXCLUIR</button>`:""}</div></div><div class="character-header"><div class="portrait large" id="portraitPreview">${a.image?`<img src="${a.image}" alt="Imagem de ${esc(a.name)}">`:"IMAGEM DO PERSONAGEM"}</div><div style="flex:1;min-width:0"><h1>${esc(a.name)}</h1><div class="sub">${esc(a.className||"Sem classe")} • ${esc(a.system||"Sistema próprio")}</div><div class="portrait-actions"><button class="btn" onclick="document.getElementById('imageInput').click()">＋ ESCOLHER IMAGEM</button><button class="btn gray" onclick="removePortrait('${a.id}')">REMOVER FOTO</button></div><input id="imageInput" type="file" accept="image/*" onchange="uploadPortrait('${a.id}',this)"><div class="muted" style="margin-top:8px">A imagem é salva nesta ficha.</div></div></div><div class="grid" id="resources">${a.resources.map(r=>resourceHTML(a,r)).join("")}</div><div class="sheet-menu" id="sheetMenu" style="display:none">
-  ${sections.map(([k,l])=>`<button class="sheet-btn ${current===k?'active':''}" onclick="window._sheetSection='${k}';tab='${k}';document.getElementById('sheetMenu').style.display='none';render()">${l}</button>`).join("")}
+  root.innerHTML=`<div class="heading"><div><button class="btn gray sm" onclick="backAgents()">← VOLTAR</button><div class="statusline">● SALVAMENTO AUTOMÁTICO</div></div><div class="btnrow"><button class="btn gray" onclick="exportOne('${a.id}')">EXPORTAR</button><button class="btn" onclick="shareAgentMenu('${a.id}')">COMPARTILHAR</button>${a.owner===operator?`<button class="btn red sm" onclick="deleteAgent('${a.id}')">EXCLUIR</button>`:""}</div></div><div class="character-header"><div class="portrait large" id="portraitPreview">${a.image?`<img src="${a.image}" alt="Imagem de ${esc(a.name)}">`:"IMAGEM DO PERSONAGEM"}</div><div style="flex:1;min-width:0"><h1>${esc(a.name)}</h1><div class="sub">${esc(a.className||"Sem classe")} • ${esc(a.system||"Sistema próprio")}</div><div class="portrait-actions"><button class="btn" onclick="document.getElementById('imageInput').click()">＋ ESCOLHER IMAGEM</button><button class="btn gray" onclick="removePortrait('${a.id}')">REMOVER FOTO</button></div><input id="imageInput" type="file" accept="image/*" onchange="uploadPortrait('${a.id}',this)"><div class="muted" style="margin-top:8px">A imagem é salva nesta ficha.</div></div></div><div class="grid" id="resources">${a.resources.map(r=>resourceHTML(a,r)).join("")}</div>${(!window._sheetSection || window._sheetSection==="menu") ? `
+<div class="sheet-center-menu">
+  <div class="sheet-center-grid">
+    ${sections.map(([k,l])=>`<button class="sheet-center-btn" onclick="window._sheetSection='${k}';tab='${k}';render()">${l}</button>`).join("")}
+  </div>
 </div>
-<button class="sheet-fab" onclick="document.getElementById('sheetMenu').style.display=document.getElementById('sheetMenu').style.display==='block'?'none':'block'">☰</button><div id="sheetRollOutput" class="roll-output">${lastRoll||""}</div><div id="tabContent"></div>`;const c=document.getElementById("tabContent");({geral:generalTab,atributos:attributesTab,pericias:skillsTab,habilidades:abilitiesTab,inventario:inventoryTab,historia:storyTab,custom:customTab})[tab](c,a)}
+` : `<div style="margin-bottom:12px"><button class="btn gray sm" onclick="window._sheetSection='menu';render()">← VOLTAR AO MENU</button></div>
+${window._sheetSection==="descricao" ? `
+<div class="panel">
+  <h2>DESCRIÇÃO / ANOTAÇÕES</h2>
+  <div class="write-area" contenteditable="true" onblur="setField('${a.id}','description',this.innerText);setField('${a.id}','story',this.innerText);setField('${a.id}','notes',this.innerText)">${esc(a.description||a.story||a.notes||"")}</div>
+  <div class="muted" style="margin-top:8px">Escreva aqui a história, características, curiosidades e regras do personagem.</div>
+</div>
+` : ""}`}<div id="sheetRollOutput" class="roll-output">${lastRoll||""}</div><div id="tabContent"></div>`;const c=document.getElementById("tabContent");({geral:generalTab,atributos:attributesTab,pericias:skillsTab,habilidades:abilitiesTab,inventario:inventoryTab,historia:storyTab,custom:customTab})[tab](c,a)}
 function uploadPortrait(id,input){const f=input.files&&input.files[0];if(!f)return;if(!f.type.startsWith("image/"))return notify("Escolha uma imagem.");if(f.size>12*1024*1024)return notify("Imagem muito grande (limite 12 MB).");const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{const scale=Math.min(1,700/Math.max(im.width,im.height)),cv=document.createElement("canvas");cv.width=Math.round(im.width*scale);cv.height=Math.round(im.height*scale);cv.getContext("2d").drawImage(im,0,0,cv.width,cv.height);const a=findAgent(id),old=a.image;a.image=cv.toDataURL("image/jpeg",.82);if(!saveDB()){a.image=old;return}render();notify("Imagem salva!")};im.onerror=()=>notify("Não foi possível abrir a imagem.");im.src=rd.result};rd.onerror=()=>notify("Erro ao carregar imagem.");rd.readAsDataURL(f)}
 function removePortrait(id){const a=findAgent(id);if(!a||!a.image)return notify("Sem imagem.");if(!confirm("Remover a imagem?"))return;a.image="";saveDB();render()}
 function resourceHTML(a,r){const pct=Number(r.max)>0?Math.max(0,Math.min(100,100*Number(r.current)/Number(r.max))):0;return `<div class="resource"><div class="resourcehead"><strong>${esc(r.name)}</strong><span>${Number(r.current)} / ${Number(r.max)}</span></div><div class="bar"><div class="fill" style="width:${pct}%"></div></div><div class="resourcefields"><div><label>Atual</label><input type="number" value="${Number(r.current)}" onchange="setResource('${a.id}','${r.id}','current',this.value)"></div><div><label>Máximo</label><input type="number" min="0" value="${Number(r.max)}" onchange="setResource('${a.id}','${r.id}','max',this.value)"></div></div><div class="resourcebuttons"><button class="btn sm gray" onclick="resourceDelta('${a.id}','${r.id}',-1)">−1</button><button class="btn sm gray" onclick="resourceDelta('${a.id}','${r.id}',1)">+1</button><button class="btn sm gray" onclick="renameResource('${a.id}','${r.id}')">RENOMEAR</button><button class="btn sm red" onclick="removeResource('${a.id}','${r.id}')">×</button></div></div>`}
