@@ -385,6 +385,7 @@ async function loadFromCloud(){
     let memberships = [];
     let campaigns = [];
     let sharedChars = [];
+    let masterCampaigns = [];
 
     try {
       const { data, error } = await supabaseClient.from("characters").select("*").eq("owner_id", currentUserId);
@@ -398,7 +399,17 @@ async function loadFromCloud(){
       else memberships = data || [];
     } catch(e){ console.error(e); }
 
-    const campaignIds = memberships.map(m => m.campaign_id);
+    // Also load campaigns I created (master)
+    try {
+      const { data, error } = await supabaseClient.from("campaigns").select("*").eq("master_id", currentUserId);
+      if(error) console.error("load master campaigns", error);
+      else masterCampaigns = data || [];
+    } catch(e){ console.error(e); }
+
+    const campaignIds = [...new Set([
+      ...memberships.map(m => m.campaign_id),
+      ...masterCampaigns.map(c => c.id)
+    ])];
 
     if(campaignIds.length){
       try {
@@ -428,7 +439,13 @@ async function loadFromCloud(){
 
     db.agents = Object.values(agentsMap);
 
-    db.campaigns = campaigns.map(c => ({
+    // Merge membership campaigns + master campaigns
+    const allCampsMap = {};
+    campaigns.forEach(c => { allCampsMap[c.id] = c; });
+    masterCampaigns.forEach(c => { allCampsMap[c.id] = c; });
+    const allCamps = Object.values(allCampsMap);
+
+    db.campaigns = allCamps.map(c => ({
       id: c.id,
       name: c.name,
       system: c.system || "",
@@ -509,6 +526,23 @@ async function joinCampaignByCode(code){
       return notify("Erro ao entrar: " + (e2.message || JSON.stringify(e2)));
     }
 
+    // Add immediately to local db so it appears right away
+    if(!db.campaigns.some(c => c.id === camp.id)){
+      db.campaigns.push({
+        id: camp.id,
+        name: camp.name,
+        system: camp.system || "",
+        description: camp.description || "",
+        master: "Mestre",
+        master_id: camp.master_id,
+        members: [operator],
+        invite: camp.invite_code,
+        status: "Em andamento",
+        created: camp.created_at
+      });
+      saveDB();
+    }
+
     await loadFromCloud();
     render();
     notify("Entrou na campanha: " + camp.name);
@@ -566,7 +600,7 @@ function saveDB(){
     const a = findAgent(selected);
     if(a && a.owner === operator){
       clearTimeout(window._cloudSaveTimer);
-      window._cloudSaveTimer = setTimeout(()=>saveCharacterToCloud(a), 800);
+      window._cloudSaveTimer = setTimeout(()=>saveCharacterToCloud(a), 400);
     }
   }
   return true;
@@ -906,6 +940,25 @@ function showPublicSheet(){
     return true;
   }
 }
+
+
+// Force cloud save when user leaves or hides the tab
+window.addEventListener("beforeunload", () => {
+  if(selected && currentUserId){
+    const a = findAgent(selected);
+    if(a && a.owner === operator){
+      // Best-effort synchronous-ish save
+      navigator.sendBeacon && navigator.sendBeacon("/noop"); // just to keep page alive briefly
+      saveCharacterToCloud(a);
+    }
+  }
+});
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "hidden" && selected && currentUserId){
+    const a = findAgent(selected);
+    if(a && a.owner === operator) saveCharacterToCloud(a);
+  }
+});
 
 (async function initZikys(){
   // A ficha pública abre antes da verificação de login.
