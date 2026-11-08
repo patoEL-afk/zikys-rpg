@@ -355,20 +355,34 @@ function sheetToAgent(row){
 }
 
 async function saveCharacterToCloud(agent){
-  if(!currentUserId) return false;
+  if(!currentUserId || !agent) return false;
   try{
+    const sheet = agentToSheet(agent);
+    // garante que arrays importantes estejam presentes
+    sheet.attributes = agent.attributes || [];
+    sheet.skills = agent.skills || [];
+    sheet.resources = agent.resources || [];
+    sheet.abilities = agent.abilities || [];
+    sheet.inventory = agent.inventory || [];
+
     const payload = {
       id: agent.id,
       owner_id: currentUserId,
       name: agent.name || "Sem nome",
-      sheet: agentToSheet(agent),
+      sheet: sheet,
       updated_at: new Date().toISOString()
     };
-    // created_at only on insert
     const { error } = await supabaseClient.from("characters").upsert(payload, { onConflict: "id" });
-    if(error){ console.error("saveCharacterToCloud", error); notify("Erro ao salvar na nuvem: " + error.message); return false; }
+    if(error){
+      console.error("saveCharacterToCloud", error);
+      notify("Erro ao salvar na nuvem: " + error.message);
+      return false;
+    }
     return true;
-  }catch(e){ console.error(e); return false; }
+  }catch(e){
+    console.error(e);
+    return false;
+  }
 }
 
 async function deleteCharacterFromCloud(id){
@@ -794,7 +808,16 @@ function answerEditRequest(id,ok){const r=db.requests.find(x=>x.id===id);if(!r||
 function copyCampaignInvite(id){const c=getCampaign(id);if(!c||!isMember(c))return;if(navigator.clipboard?.writeText)navigator.clipboard.writeText(c.invite).then(()=>notify("Convite copiado!")).catch(()=>prompt("Copie o código:",c.invite));else prompt("Copie o código:",c.invite)}
 function regenerateCampaignInvite(id){const c=getCampaign(id);if(!c||!isMaster(c))return;if(!confirm("O código antigo deixará de funcionar. Continuar?"))return;c.invite=campaignCode();saveDB();openCampaign(id);notify("Novo convite gerado!")}
 function removeCampaignMember(id,encoded){const c=getCampaign(id),name=decodeURIComponent(encoded);if(!c||!isMaster(c)||name===c.master)return;if(!confirm("Remover jogador?"))return;c.members=c.members.filter(x=>x!==name);saveDB();openCampaign(id)}
-function deleteCampaign(id){const c=getCampaign(id);if(!c||!isMaster(c))return notify("Somente o mestre pode excluir.");if(!confirm("Excluir campanha?"))return;db.campaigns=db.campaigns.filter(x=>x.id!==id);db.agents.forEach(a=>a.sharedCampaigns=(a.sharedCampaigns||[]).filter(x=>x!==id));db.requests=db.requests.filter(r=>r.campaign!==id);saveDB();render();notify("Campanha excluída.")}
+async function deleteCampaign(id){const c=getCampaign(id);if(!c||!isMaster(c))return notify("Somente o mestre pode excluir.");if(!confirm("Excluir campanha?"))return;db.campaigns=db.campaigns.filter(x=>x.id!==id);db.agents.forEach(a=>a.sharedCampaigns=(a.sharedCampaigns||[]).filter(x=>x!==id));db.requests=db.requests.filter(r=>r.campaign!==id);saveDB();
+  try{
+    await supabaseClient.from("campaign_members").delete().eq("campaign_id", id);
+    await supabaseClient.from("campaign_characters").delete().eq("campaign_id", id);
+    const { error } = await supabaseClient.from("campaigns").delete().eq("id", id).eq("master_id", currentUserId);
+    if(error) console.error("delete campaign cloud", error);
+    else notify("Campanha excluída");
+  }catch(e){ console.error(e); notify("Excluída localmente (erro na nuvem)"); }
+  render();
+}
 function deleteAgent(id){const a=findAgent(id);if(!a||a.owner!==operator)return notify("Somente o proprietário pode excluir.");if(!confirm("Excluir esta ficha?"))return;db.agents=db.agents.filter(x=>x.id!==id);db.requests=db.requests.filter(r=>r.character!==id);saveDB();deleteCharacterFromCloud(id);selected=null;page="agents";render();notify("Ficha excluída")}
 function downloadJSON(data,name){const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=name;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 function exportOne(id){const a=findAgent(id);if(a)downloadJSON(a,"ZIKYS_"+a.name.replace(/[^a-z0-9]/gi,"_")+".json")}
