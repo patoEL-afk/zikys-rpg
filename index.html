@@ -402,6 +402,54 @@ textarea{min-height:90px;resize:vertical}
 .entry{margin-bottom:10px}
 .btnrow{margin-top:8px}
 
+
+/* Floating menu button (estilo C.R.I.S.) */
+.fab{
+  position:fixed;
+  bottom:22px;
+  right:22px;
+  width:58px;
+  height:58px;
+  border-radius:50%;
+  background:linear-gradient(135deg,var(--purple),var(--purple2));
+  border:none;
+  color:#fff;
+  font-size:24px;
+  box-shadow:0 4px 18px rgba(138,74,209,.45);
+  z-index:50;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.fab:hover{transform:scale(1.08)}
+.fab-menu{
+  position:fixed;
+  bottom:90px;
+  right:22px;
+  background:var(--panel);
+  border:1px solid var(--line2);
+  border-radius:14px;
+  padding:10px;
+  z-index:49;
+  min-width:180px;
+  box-shadow:var(--shadow);
+  display:none;
+}
+.fab-menu.open{display:block}
+.fab-menu button{
+  display:block;
+  width:100%;
+  text-align:left;
+  padding:10px 12px;
+  background:transparent;
+  border:none;
+  color:var(--text);
+  border-radius:8px;
+  font-size:13.5px;
+}
+.fab-menu button:hover{background:var(--panel2)}
+
 @media (max-width:750px){
   html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important}
   #app,.layout,.main{width:100%!important;max-width:100%!important;min-width:0!important}
@@ -450,6 +498,16 @@ textarea{min-height:90px;resize:vertical}
   </div>
 </section>
 <div id="app" class="hidden"><header class="top"><div class="logo">ZIKYS<small>RPG MANAGEMENT SYSTEM</small></div><div class="operator" id="operatorName"></div></header><div class="layout"><aside class="sidebar"><div class="navtitle">TERMINAL</div><button class="nav active" data-page="home">⌂ &nbsp; INÍCIO</button><button class="nav" data-page="agents">◈ &nbsp; AGENTES</button><button class="nav" data-page="dice">⚄ &nbsp; DADOS</button><div class="navtitle">GERENCIAMENTO</div><button class="nav" data-page="campaigns">▤ &nbsp; CAMPANHAS</button><button class="nav" data-page="backup">⇅ &nbsp; BACKUP</button><button class="nav" data-page="settings">⚙ &nbsp; CONFIGURAÇÕES</button></aside><main class="main" id="main"></main></div></div>
+
+<button class="fab" onclick="toggleFabMenu()">☰</button>
+<div id="fabMenu" class="fab-menu">
+  <button onclick="go('home');toggleFabMenu()">🏠 Início</button>
+  <button onclick="go('agents');toggleFabMenu()">👤 Agentes</button>
+  <button onclick="go('campaigns');toggleFabMenu()">🎲 Campanhas</button>
+  <button onclick="go('rolls');toggleFabMenu()">🎲 Dados</button>
+  <button onclick="go('home');toggleFabMenu()">⚙️ Config</button>
+</div>
+
 <div id="toast" class="toast hidden"></div>
 <script>
 "use strict";
@@ -864,6 +922,12 @@ function migrateAgentId(agent){
 }
 
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+
+function toggleFabMenu(){
+  const m = document.getElementById("fabMenu");
+  if(m) m.classList.toggle("open");
+}
+
 function notify(s){const t=document.getElementById("toast");t.textContent=s;t.classList.remove("hidden");clearTimeout(window.zkToastTimer);window.zkToastTimer=setTimeout(()=>t.classList.add("hidden"),2500)}
 
 // Converte a ficha para um token seguro para URL.
