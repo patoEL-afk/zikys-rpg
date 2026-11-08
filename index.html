@@ -501,10 +501,13 @@ async function joinCampaignByCode(code){
     const { error: e2 } = await supabaseClient.from("campaign_members").insert({
       campaign_id: camp.id,
       user_id: currentUserId,
-      role: "member",
+      role: "player",
       joined_at: new Date().toISOString()
     });
-    if(e2){ console.error(e2); return notify("Erro ao entrar: " + e2.message); }
+    if(e2){
+      console.error("join insert error:", e2);
+      return notify("Erro ao entrar: " + (e2.message || JSON.stringify(e2)));
+    }
 
     await loadFromCloud();
     render();
