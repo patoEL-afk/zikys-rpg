@@ -1193,7 +1193,24 @@ function newAgent(){const a={id:uid(),owner:operator,sharedCampaigns:[],sharedWi
 function canEditAgent(id){const a=findAgent(id);if(!a)return false;if(a.owner===operator)return true;return db.requests.some(r=>r.character===id&&r.master===operator&&r.owner===a.owner&&r.status==="approved")}
 function openAgent(id){if(!canEditAgent(id))return notify("Você não tem autorização para editar esta ficha.");selected=id;tab="geral";lastRoll=null;render()}
 function backAgents(){selected=null;page="agents";lastRoll=null;render()}
-function renderHome(root){root.innerHTML=heading("CENTRAL DE OPERAÇÕES","Bem-vindo ao ZIKYS.")+`<div class="grid3"><div class="stat"><strong>${db.agents.length}</strong><span>PERSONAGENS</span></div><div class="stat"><strong>${db.campaigns.length}</strong><span>CAMPANHAS</span></div><div class="stat"><strong>${db.rolls.length}</strong><span>ROLAGENS</span></div></div><div class="panel" style="margin-top:15px"><h2>ACESSO RÁPIDO</h2><div class="btnrow"><button class="btn" onclick="newAgent()">＋ CRIAR FICHA</button><button class="btn gray" onclick="go('agents')">VER PERSONAGENS</button><button class="btn gray" onclick="go('dice')">TERMINAL DE DADOS</button></div></div><div class="panel"><h2>PERSONAGENS RECENTES</h2>${db.agents.length?db.agents.slice(-5).reverse().map(agentCard).join(""):'<div class="empty">Nenhuma ficha criada.</div>'}</div>`}
+function renderHome(root){
+  root.innerHTML = `
+    <div class="heading">
+      <h1>ZIKYS RPG</h1>
+      <div class="sub">Sistema de gerenciamento de campanhas e fichas personalizadas</div>
+    </div>
+    <div class="panel" style="margin-bottom:20px">
+      <h2>Sobre o ZIKYS</h2>
+      <p>Este site foi criado para permitir que você e seus amigos criem e gerenciem campanhas de RPG e personagens totalmente personalizados, sem as limitações de sistemas prontos.</p>
+      <p>Você pode criar fichas com atributos, perícias, habilidades, inventário e barras de status do jeito que quiser, e compartilhar com sua mesa.</p>
+    </div>
+    <div class="panel" style="margin-top:40px; background:#0d0d12; border-color:#333">
+      <h3 style="color:var(--bright)">Créditos</h3>
+      <p style="white-space:pre-wrap; line-height:1.6; color:#c8d0c8">Olá queridos amigos, esse site foi criado após eu ver amigos (🐤🟩) meu tendo que fazer fichas por imagens, e limitações criativas por conta de sistemas e sites a volta. E decidi tentar fazer algo onde der para fazer campanhas e personagens totalmente personalizados. Perdão caso tenha erros e defeitos, pos estou começando agora, e não sei muito programação. Enfim, espero que gostem, eu vou sempre tentar atualizar. E eu ja ia esquecendo, prazer eu sou Zikys, mas podem me chamar de Pato.</p>
+    </div>
+  `;
+}
+
 function agentCard(a){return `<div class="agent"><div class="agent-portrait">${a.image?`<img src="${a.image}" alt="Personagem">`:"<span style='color:#666;font-size:11px'>SEM FOTO</span>"}</div><div class="agent-info"><div class="agenttitle">${esc(a.name)}</div><div class="muted">${esc(a.className||"Sem classe")}</div><div class="muted" style="font-size:11px;margin-top:4px">${esc(a.system||"Sistema próprio")}</div><div class="btnrow" style="margin-top:10px"><button class="btn sm" style="background:var(--purple2);border-color:var(--purple)" onclick="openAgent('${a.id}')">ACESSAR FICHA</button><button class="btn sm gray" onclick="quickRoll('${a.id}')">ROLAR D20</button></div></div>`}
 function renderAgents(root){const own=db.agents.filter(a=>a.owner===operator);root.innerHTML=heading("AGENTES","Suas fichas cadastradas.",'<button class="btn" onclick="newAgent()">＋ NOVA FICHA</button>')+(own.length?own.map(agentCard).join(""):'<div class="empty">Crie sua primeira ficha para começar.</div>')}
 function renderAgent(root,a){
