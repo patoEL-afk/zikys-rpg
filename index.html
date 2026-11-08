@@ -381,88 +381,71 @@ async function deleteCharacterFromCloud(id){
 async function loadFromCloud(){
   if(!currentUserId) return;
   try{
-    // 1. Minhas fichas
-    const { data: myChars, error: e1 } = await supabaseClient
-      .from("characters")
-      .select("*")
-      .eq("owner_id", currentUserId);
-    if(e1) console.error("load my chars", e1);
-
-    // 2. Campanhas que participo
-    const { data: memberships, error: e2 } = await supabaseClient
-      .from("campaign_members")
-      .select("campaign_id, role")
-      .eq("user_id", currentUserId);
-    if(e2) console.error("load memberships", e2);
-
-    const campaignIds = (memberships || []).map(m => m.campaign_id);
+    let myChars = [];
+    let memberships = [];
     let campaigns = [];
-    if(campaignIds.length){
-      const { data: camps, error: e3 } = await supabaseClient
-        .from("campaigns")
-        .select("*")
-        .in("id", campaignIds);
-      if(e3) console.error("load campaigns", e3);
-      campaigns = camps || [];
-    }
-
-    // 3. Fichas compartilhadas nas campanhas que participo
     let sharedChars = [];
+
+    try {
+      const { data, error } = await supabaseClient.from("characters").select("*").eq("owner_id", currentUserId);
+      if(error) console.error("load my chars", error);
+      else myChars = data || [];
+    } catch(e){ console.error(e); }
+
+    try {
+      const { data, error } = await supabaseClient.from("campaign_members").select("campaign_id, role").eq("user_id", currentUserId);
+      if(error) console.error("load memberships", error);
+      else memberships = data || [];
+    } catch(e){ console.error(e); }
+
+    const campaignIds = memberships.map(m => m.campaign_id);
+
     if(campaignIds.length){
-      const { data: shares } = await supabaseClient
-        .from("campaign_characters")
-        .select("character_id")
-        .in("campaign_id", campaignIds);
-      const sharedIds = [...new Set((shares || []).map(s => s.character_id))];
-      if(sharedIds.length){
-        const { data: sc } = await supabaseClient
-          .from("characters")
-          .select("*")
-          .in("id", sharedIds);
-        sharedChars = sc || [];
-      }
+      try {
+        const { data, error } = await supabaseClient.from("campaigns").select("*").in("id", campaignIds);
+        if(error) console.error("load campaigns", error);
+        else campaigns = data || [];
+      } catch(e){ console.error(e); }
+
+      try {
+        const { data: shares } = await supabaseClient.from("campaign_characters").select("character_id").in("campaign_id", campaignIds);
+        const sharedIds = [...new Set((shares || []).map(s => s.character_id))];
+        if(sharedIds.length){
+          const { data: sc } = await supabaseClient.from("characters").select("*").in("id", sharedIds);
+          sharedChars = sc || [];
+        }
+      } catch(e){ console.error(e); }
     }
 
-    // Monta db local
     const agentsMap = {};
-    (myChars || []).forEach(row => {
-      agentsMap[row.id] = sheetToAgent(row);
-    });
-    sharedChars.forEach(row => {
-      if(!agentsMap[row.id]) agentsMap[row.id] = sheetToAgent(row);
+    myChars.forEach(row => { agentsMap[row.id] = sheetToAgent(row); });
+    sharedChars.forEach(row => { if(!agentsMap[row.id]) agentsMap[row.id] = sheetToAgent(row); });
+
+    // Mantém fichas locais que ainda não foram para a nuvem
+    (db.agents || []).forEach(a => {
+      if(a.owner === operator && !agentsMap[a.id]) agentsMap[a.id] = a;
     });
 
     db.agents = Object.values(agentsMap);
 
-    db.campaigns = (campaigns || []).map(c => ({
+    db.campaigns = campaigns.map(c => ({
       id: c.id,
       name: c.name,
       system: c.system || "",
       description: c.description || "",
-      master: c.master_id === currentUserId ? operator : (c.master_name || "Mestre"),
+      master: c.master_id === currentUserId ? operator : "Mestre",
       master_id: c.master_id,
-      members: [], // será preenchido se necessário
+      members: [operator],
       invite: c.invite_code,
       status: "Em andamento",
       created: c.created_at
     }));
 
-    // Preenche members de forma simples (só o próprio usuário + mestre)
-    for(const camp of db.campaigns){
-      const { data: mems } = await supabaseClient
-        .from("campaign_members")
-        .select("user_id, role")
-        .eq("campaign_id", camp.id);
-      camp.members = (mems || []).map(m => m.user_id === currentUserId ? operator : (m.role === "master" ? "Mestre" : "Jogador"));
-      // melhor: buscar display_name do profiles
-    }
-
     cloudDataLoaded = true;
-    saveDB(); // cache local
+    saveDB();
     console.log("Cloud loaded:", db.agents.length, "agents,", db.campaigns.length, "campaigns");
   }catch(e){
     console.error("loadFromCloud error", e);
-    notify("Erro ao carregar dados da nuvem");
   }
 }
 
@@ -627,9 +610,17 @@ async function start(user){
   document.getElementById("login").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
   document.getElementById("operatorName").textContent = "OPERADOR: " + operator.toUpperCase();
-  await ensureProfile();
-  await loadFromCloud();
-  render();
+  render(); // mostra a tela imediatamente
+
+  // sincroniza com a nuvem em segundo plano (não trava o login)
+  try {
+    await ensureProfile();
+    await loadFromCloud();
+    render(); // atualiza de novo depois de carregar da nuvem
+  } catch(e) {
+    console.error("Erro na sincronização com a nuvem:", e);
+    notify("Logado, mas não conseguiu sincronizar com a nuvem");
+  }
 }
 function findAgent(id){return db.agents.find(a=>a.id===id)}
 function heading(t,s,b=""){return `<div class="heading"><div><h1>${t}</h1><div class="sub">${s}</div></div>${b}</div>`}
