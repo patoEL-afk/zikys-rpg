@@ -450,6 +450,30 @@ textarea{min-height:90px;resize:vertical}
 }
 .fab-menu button:hover{background:var(--panel2)}
 
+
+.sheet-menu{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin:16px 0 20px;
+}
+.sheet-btn{
+  background:#1a1a22;
+  border:1px solid var(--line2);
+  color:var(--text);
+  padding:16px 12px;
+  border-radius:10px;
+  font-size:13.5px;
+  font-weight:600;
+  letter-spacing:.5px;
+  text-align:center;
+}
+.sheet-btn.active,.sheet-btn:hover{
+  border-color:var(--purple);
+  background:#221a2a;
+  color:var(--bright);
+}
+
 @media (max-width:750px){
   html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important}
   #app,.layout,.main{width:100%!important;max-width:100%!important;min-width:0!important}
@@ -987,7 +1011,21 @@ function backAgents(){selected=null;page="agents";lastRoll=null;render()}
 function renderHome(root){root.innerHTML=heading("CENTRAL DE OPERAÇÕES","Bem-vindo ao ZIKYS.")+`<div class="grid3"><div class="stat"><strong>${db.agents.length}</strong><span>PERSONAGENS</span></div><div class="stat"><strong>${db.campaigns.length}</strong><span>CAMPANHAS</span></div><div class="stat"><strong>${db.rolls.length}</strong><span>ROLAGENS</span></div></div><div class="panel" style="margin-top:15px"><h2>ACESSO RÁPIDO</h2><div class="btnrow"><button class="btn" onclick="newAgent()">＋ CRIAR FICHA</button><button class="btn gray" onclick="go('agents')">VER PERSONAGENS</button><button class="btn gray" onclick="go('dice')">TERMINAL DE DADOS</button></div></div><div class="panel"><h2>PERSONAGENS RECENTES</h2>${db.agents.length?db.agents.slice(-5).reverse().map(agentCard).join(""):'<div class="empty">Nenhuma ficha criada.</div>'}</div>`}
 function agentCard(a){return `<div class="agent"><div class="agent-portrait">${a.image?`<img src="${a.image}" alt="Personagem">`:"<span style='color:#666;font-size:11px'>SEM FOTO</span>"}</div><div class="agent-info"><div class="agenttitle">${esc(a.name)}</div><div class="muted">${esc(a.className||"Sem classe")}</div><div class="muted" style="font-size:11px;margin-top:4px">${esc(a.system||"Sistema próprio")}</div><div class="btnrow" style="margin-top:10px"><button class="btn sm" style="background:var(--purple2);border-color:var(--purple)" onclick="openAgent('${a.id}')">ACESSAR FICHA</button><button class="btn sm gray" onclick="quickRoll('${a.id}')">ROLAR D20</button></div></div>`}
 function renderAgents(root){const own=db.agents.filter(a=>a.owner===operator);root.innerHTML=heading("AGENTES","Suas fichas cadastradas.",'<button class="btn" onclick="newAgent()">＋ NOVA FICHA</button>')+(own.length?own.map(agentCard).join(""):'<div class="empty">Crie sua primeira ficha para começar.</div>')}
-function renderAgent(root,a){const tabs=[["geral","Geral"],["atributos","Atributos"],["pericias","Perícias"],["habilidades","Habilidades"],["inventario","Inventário"],["historia","História"],["custom","Personalização"]];root.innerHTML=`<div class="heading"><div><button class="btn gray sm" onclick="backAgents()">← VOLTAR</button><div class="statusline">● SALVAMENTO AUTOMÁTICO ATIVADO</div></div><div class="btnrow"><button class="btn gray" onclick="exportOne('${a.id}')">EXPORTAR</button><button class="btn" onclick="shareAgentMenu('${a.id}')">COMPARTILHAR</button>${a.owner===operator?`<button class="btn red" onclick="deleteAgent('${a.id}')">EXCLUIR FICHA</button>`:""}</div></div><div class="character-header"><div class="portrait large" id="portraitPreview">${a.image?`<img src="${a.image}" alt="Imagem de ${esc(a.name)}">`:"IMAGEM DO PERSONAGEM"}</div><div style="flex:1;min-width:0"><h1>${esc(a.name)}</h1><div class="sub">${esc(a.className||"Sem classe")} • ${esc(a.system||"Sistema próprio")}</div><div class="portrait-actions"><button class="btn" onclick="document.getElementById('imageInput').click()">＋ ESCOLHER IMAGEM</button><button class="btn gray" onclick="removePortrait('${a.id}')">REMOVER FOTO</button></div><input id="imageInput" type="file" accept="image/*" onchange="uploadPortrait('${a.id}',this)"><div class="muted" style="margin-top:8px">A imagem é salva nesta ficha.</div></div></div><div class="grid" id="resources">${a.resources.map(r=>resourceHTML(a,r)).join("")}</div><div class="tabs">${tabs.map(t=>`<button class="tab ${tab===t[0]?"active":""}" onclick="tab='${t[0]}';render()">${t[1]}</button>`).join("")}</div><div id="sheetRollOutput" class="roll-output">${lastRoll||""}</div><div id="tabContent"></div>`;const c=document.getElementById("tabContent");({geral:generalTab,atributos:attributesTab,pericias:skillsTab,habilidades:abilitiesTab,inventario:inventoryTab,historia:storyTab,custom:customTab})[tab](c,a)}
+function renderAgent(root,a){
+  const sections = [
+    ["geral","INFORMAÇÕES"],
+    ["descricao","DESCRIÇÃO"],
+    ["atributos","ATRIBUTOS"],
+    ["pericias","PERÍCIAS"],
+    ["combate","COMBATE"],
+    ["inventario","INVENTÁRIO"],
+    ["habilidades","HABILIDADES"],
+    ["rituais","RITUAIS"]
+  ];
+  const current = window._sheetSection || "geral";
+  root.innerHTML=`<div class="heading"><div><button class="btn gray sm" onclick="backAgents()">← VOLTAR</button><div class="statusline">● SALVAMENTO AUTOMÁTICO</div></div><div class="btnrow"><button class="btn gray" onclick="exportOne('${a.id}')">EXPORTAR</button><button class="btn" onclick="shareAgentMenu('${a.id}')">COMPARTILHAR</button>${a.owner===operator?`<button class="btn red sm" onclick="deleteAgent('${a.id}')">EXCLUIR</button>`:""}</div></div><div class="character-header"><div class="portrait large" id="portraitPreview">${a.image?`<img src="${a.image}" alt="Imagem de ${esc(a.name)}">`:"IMAGEM DO PERSONAGEM"}</div><div style="flex:1;min-width:0"><h1>${esc(a.name)}</h1><div class="sub">${esc(a.className||"Sem classe")} • ${esc(a.system||"Sistema próprio")}</div><div class="portrait-actions"><button class="btn" onclick="document.getElementById('imageInput').click()">＋ ESCOLHER IMAGEM</button><button class="btn gray" onclick="removePortrait('${a.id}')">REMOVER FOTO</button></div><input id="imageInput" type="file" accept="image/*" onchange="uploadPortrait('${a.id}',this)"><div class="muted" style="margin-top:8px">A imagem é salva nesta ficha.</div></div></div><div class="grid" id="resources">${a.resources.map(r=>resourceHTML(a,r)).join("")}</div><div class="sheet-menu">
+  ${sections.map(([k,l])=>`<button class="sheet-btn ${current===k?'active':''}" onclick="window._sheetSection='${k}';tab='${k}';render()">${l}</button>`).join("")}
+</div><div id="sheetRollOutput" class="roll-output">${lastRoll||""}</div><div id="tabContent"></div>`;const c=document.getElementById("tabContent");({geral:generalTab,atributos:attributesTab,pericias:skillsTab,habilidades:abilitiesTab,inventario:inventoryTab,historia:storyTab,custom:customTab})[tab](c,a)}
 function uploadPortrait(id,input){const f=input.files&&input.files[0];if(!f)return;if(!f.type.startsWith("image/"))return notify("Escolha uma imagem.");if(f.size>12*1024*1024)return notify("Imagem muito grande (limite 12 MB).");const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{const scale=Math.min(1,700/Math.max(im.width,im.height)),cv=document.createElement("canvas");cv.width=Math.round(im.width*scale);cv.height=Math.round(im.height*scale);cv.getContext("2d").drawImage(im,0,0,cv.width,cv.height);const a=findAgent(id),old=a.image;a.image=cv.toDataURL("image/jpeg",.82);if(!saveDB()){a.image=old;return}render();notify("Imagem salva!")};im.onerror=()=>notify("Não foi possível abrir a imagem.");im.src=rd.result};rd.onerror=()=>notify("Erro ao carregar imagem.");rd.readAsDataURL(f)}
 function removePortrait(id){const a=findAgent(id);if(!a||!a.image)return notify("Sem imagem.");if(!confirm("Remover a imagem?"))return;a.image="";saveDB();render()}
 function resourceHTML(a,r){const pct=Number(r.max)>0?Math.max(0,Math.min(100,100*Number(r.current)/Number(r.max))):0;return `<div class="resource"><div class="resourcehead"><strong>${esc(r.name)}</strong><span>${Number(r.current)} / ${Number(r.max)}</span></div><div class="bar"><div class="fill" style="width:${pct}%"></div></div><div class="resourcefields"><div><label>Atual</label><input type="number" value="${Number(r.current)}" onchange="setResource('${a.id}','${r.id}','current',this.value)"></div><div><label>Máximo</label><input type="number" min="0" value="${Number(r.max)}" onchange="setResource('${a.id}','${r.id}','max',this.value)"></div></div><div class="resourcebuttons"><button class="btn sm gray" onclick="resourceDelta('${a.id}','${r.id}',-1)">−1</button><button class="btn sm gray" onclick="resourceDelta('${a.id}','${r.id}',1)">+1</button><button class="btn sm gray" onclick="renameResource('${a.id}','${r.id}')">RENOMEAR</button><button class="btn sm red" onclick="removeResource('${a.id}','${r.id}')">×</button></div></div>`}
