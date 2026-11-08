@@ -15,9 +15,13 @@
   --panel3:#1c261c;
   --line:#2a382a;
   --line2:#3d4f3d;
-  --green:#9dbe6e;
-  --bright:#c8e09a;
-  --accent:#b8d48a;
+  --green:#8fd16a;
+  --bright:#d4f0a0;
+  --accent:#a8e070;
+  --blue:#6ab0d1;
+  --purple:#b07ad1;
+  --orange:#d1a06a;
+  --gold:#e0c070;
   --muted:#8a9a84;
   --muted2:#6b7a66;
   --red:#d07a72;
@@ -41,7 +45,7 @@ button{cursor:pointer;transition:all .15s ease}
 /* TOP BAR */
 .top{
   height:68px;
-  background:linear-gradient(180deg,#0e150e,#0a100a);
+  background:linear-gradient(180deg,#0e1a0e,#0a120a);
   border-bottom:1px solid var(--line);
   display:flex;
   align-items:center;
@@ -56,7 +60,7 @@ button{cursor:pointer;transition:all .15s ease}
   font-size:26px;
   font-weight:900;
   letter-spacing:6px;
-  color:var(--bright);
+  color:var(--bright);text-shadow:0 0 18px rgba(143,209,106,.35);
   text-shadow:0 0 20px rgba(197,230,154,.15);
 }
 .logo small{
@@ -109,7 +113,7 @@ button{cursor:pointer;transition:all .15s ease}
 .nav.active,.nav:hover{
   background:var(--panel2);
   border-color:var(--line2);
-  color:var(--bright);
+  color:var(--bright);text-shadow:0 0 18px rgba(143,209,106,.35);
 }
 .nav.active{box-shadow:inset 3px 0 0 var(--green)}
 
@@ -131,7 +135,7 @@ button{cursor:pointer;transition:all .15s ease}
 }
 h1{font-size:28px;margin:0 0 6px;font-weight:800;letter-spacing:-.3px}
 h2{font-size:18px;margin:0 0 16px;font-weight:700;color:var(--text)}
-h3{font-size:14px;color:var(--bright);margin:0 0 8px}
+h3{font-size:14px;color:var(--bright);text-shadow:0 0 18px rgba(143,209,106,.35);margin:0 0 8px}
 .sub,.muted{color:var(--muted);font-size:13px}
 .sub{margin-top:2px}
 
@@ -150,7 +154,7 @@ h3{font-size:14px;color:var(--bright);margin:0 0 8px}
 .btn{
   background:linear-gradient(180deg,#2a3d28,#243522);
   border:1px solid #4a6148;
-  color:var(--bright);
+  color:var(--bright);text-shadow:0 0 18px rgba(143,209,106,.35);
   padding:10px 16px;
   border-radius:9px;
   font-weight:600;
@@ -204,7 +208,7 @@ textarea{min-height:90px;resize:vertical}
   transition:transform .15s,border .15s;
 }
 .agent:hover{border-color:var(--line2);transform:translateY(-1px)}
-.agenttitle{font-size:16px;font-weight:700;color:var(--bright);margin-bottom:4px}
+.agenttitle{font-size:16px;font-weight:700;color:var(--bright);text-shadow:0 0 18px rgba(143,209,106,.35);margin-bottom:4px}
 .agent .muted{font-size:12.5px}
 
 /* PORTRAIT */
@@ -298,7 +302,7 @@ textarea{min-height:90px;resize:vertical}
 .tab.active,.tab:hover{
   background:var(--panel2);
   border-color:var(--green);
-  color:var(--bright);
+  color:var(--bright);text-shadow:0 0 18px rgba(143,209,106,.35);
 }
 
 /* STATS / ENTRIES */
@@ -308,13 +312,13 @@ textarea{min-height:90px;resize:vertical}
   border-radius:10px;
   padding:14px;
 }
-.stat b{color:var(--bright);font-size:18px}
+.stat b{color:var(--bright);text-shadow:0 0 18px rgba(143,209,106,.35);font-size:18px}
 
 /* TAGS */
 .tag{
   display:inline-block;
   background:#1e2a1e;
-  color:var(--bright);
+  color:var(--bright);text-shadow:0 0 18px rgba(143,209,106,.35);
   font-size:10px;
   font-weight:700;
   letter-spacing:1px;
@@ -361,7 +365,7 @@ textarea{min-height:90px;resize:vertical}
   right:24px;
   background:var(--panel3);
   border:1px solid var(--green);
-  color:var(--bright);
+  color:var(--bright);text-shadow:0 0 18px rgba(143,209,106,.35);
   padding:14px 18px;
   border-radius:10px;
   box-shadow:var(--shadow);
@@ -498,6 +502,7 @@ function sheetToAgent(row){
 
 async function saveCharacterToCloud(agent){
   if(!currentUserId || !agent) return false;
+  migrateAgentId(agent);
   try{
     const sheet = agentToSheet(agent);
     // garante que arrays importantes estejam presentes
@@ -622,9 +627,12 @@ async function loadFromCloud(){
     sharedChars.forEach(row => {
       if(!agentsMap[row.id]) agentsMap[row.id] = sheetToAgent(row);
     });
-    // Mantém locais que ainda não foram para a nuvem
+    // Mantém locais que ainda não foram para a nuvem e migra IDs antigos
     (db.agents || []).forEach(a => {
-      if(a.owner === operator && !agentsMap[a.id]) agentsMap[a.id] = a;
+      if(a.owner === operator){
+        migrateAgentId(a);
+        if(!agentsMap[a.id]) agentsMap[a.id] = a;
+      }
     });
     db.agents = Object.values(agentsMap);
 
@@ -820,6 +828,27 @@ function saveDB(){
  }
 }
 function uid(){return crypto.randomUUID()}
+
+function isValidUUID(str){
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str || "");
+}
+
+function ensureUUID(oldId){
+  if(isValidUUID(oldId)) return oldId;
+  // Gera um UUID estável a partir do id antigo (para não perder referência)
+  const hash = Array.from(oldId || "").reduce((a,c) => ((a<<5)-a)+c.charCodeAt(0), 0);
+  const hex = Math.abs(hash).toString(16).padStart(8,"0").slice(0,8);
+  return crypto.randomUUID(); // sempre novo para evitar colisão
+}
+
+function migrateAgentId(agent){
+  if(!agent || isValidUUID(agent.id)) return agent;
+  const newId = crypto.randomUUID();
+  console.log("Migrando ficha", agent.id, "→", newId);
+  agent.id = newId;
+  return agent;
+}
+
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function notify(s){const t=document.getElementById("toast");t.textContent=s;t.classList.remove("hidden");clearTimeout(window.zkToastTimer);window.zkToastTimer=setTimeout(()=>t.classList.add("hidden"),2500)}
 
@@ -942,6 +971,16 @@ function setAttribute(id,aid,v){
 }
 function addAttribute(id){const n=prompt("Nome do atributo:");if(!n)return;findAgent(id).attributes.push({id:uid(),name:n,value:0});saveDB();render()}
 function deleteAttribute(id,aid){if(!confirm("Remover atributo?"))return;const a=findAgent(id);a.attributes=a.attributes.filter(x=>x.id!==aid);saveDB();render()}
+
+function skillRoll(id, sid){
+  const a = findAgent(id);
+  if(!a) return;
+  const s = (a.skills || []).find(x => x.id === sid);
+  if(!s) return;
+  const mod = Number(s.value) || 0;
+  doRoll(20, 1, mod, a.name + " • " + s.name);
+}
+
 function attributeRoll(id,aid,inputValue){const a=findAgent(id),x=a?.attributes.find(z=>z.id===aid);if(!a||!x)return;const raw=inputValue!==undefined?inputValue:x.value;const parsed=Number(raw);const value=Number.isFinite(parsed)?Math.max(0,Math.min(100,Math.floor(parsed))):0;x.value=value;saveDB();const qty=value===0?2:value;const results=Array.from({length:qty},()=>Math.floor(Math.random()*20)+1);const kept=value===0?Math.min(...results):Math.max(...results);const rule=value===0?"Atributo 0: menor de 2 dados":"Maior resultado dos dados";const record={id:uid(),date:new Date().toLocaleString("pt-BR"),label:a.name+" • Atributo: "+x.name,results,total:kept,mod:0,sides:20,qty,rule,kept};db.rolls.unshift(record);db.rolls=db.rolls.slice(0,150);saveDB();lastRoll=`<div class="panel"><div class="muted">RESULTADO DO TESTE</div><h2>${esc(a.name)} • ${esc(x.name)}</h2><div class="diceout"><div class="muted">${qty}D20 • ${rule}</div><strong>${kept}</strong><div class="muted">Dados rolados (${qty}): ${results.map(n=>n===kept?`<b style="color:var(--bright)">[${n}]</b>`:n).join(" • ")}<br>Resultado escolhido: ${kept}</div></div></div>`;const s=document.getElementById("sheetRollOutput"),t=document.getElementById("rollOutput");if(s)s.innerHTML=lastRoll;if(t)t.innerHTML=lastRoll;notify("Rolagem de "+qty+"d20 realizada!")}
 function skillsTab(c,a){c.innerHTML=`<div class="panel"><div class="heading"><div><h2>PERÍCIAS DO PERSONAGEM</h2><div class="muted">Edite modificadores e role pela ficha.</div></div><button class="btn" onclick="addSkill('${a.id}')">＋ NOVA PERÍCIA</button></div><div class="skillgrid">${a.skills.map(s=>`<div class="skill"><div><strong>${esc(s.name)}</strong><div class="muted">Modificador</div><input type="number" value="${Number(s.value)}" onchange="setSkill('${a.id}','${s.id}',this.value)"></div><div class="btnrow"><button class="btn" onclick="skillRoll('${a.id}','${s.id}')">⚄ ROLAR</button><button class="btn red sm" onclick="deleteSkill('${a.id}','${s.id}')">×</button></div></div>`).join("")}</div></div>`}
 function addSkill(id){const n=prompt("Nome da perícia:");if(!n)return;findAgent(id).skills.push({id:uid(),name:n,value:Number(prompt("Modificador inicial:","0"))||0,attribute:""});saveDB();render()}
@@ -963,7 +1002,7 @@ function customTab(c,a){c.innerHTML=`<div class="panel"><h2>PERSONALIZAÇÃO DA 
 function doRoll(sides,qty,mod,label){const results=[];for(let i=0;i<qty;i++)results.push(Math.floor(Math.random()*sides)+1);const diceTotal=results.reduce((x,y)=>x+y,0),total=diceTotal+mod,record={id:uid(),date:new Date().toLocaleString("pt-BR"),label,results,total,mod,sides,qty};db.rolls.unshift(record);db.rolls=db.rolls.slice(0,150);saveDB();lastRoll=`<div class="panel"><div class="muted">RESULTADO DO TESTE</div><h2>${esc(label)}</h2><div class="diceout"><div class="muted">${qty}D${sides}</div><strong>${total}</strong><div class="muted">Dados: ${results.join(" + ")}<br>Modificador: ${mod>=0?"+":""}${mod}<br>Resultado dos dados: ${diceTotal}</div></div></div>`;const s=document.getElementById("sheetRollOutput"),t=document.getElementById("rollOutput");if(s)s.innerHTML=lastRoll;if(t)t.innerHTML=lastRoll;notify("Rolagem realizada!")}
 function quickRoll(id){const a=findAgent(id);if(a)doRoll(20,1,0,a.name+" • D20")}
 function freeRoll(){const sides=Number(document.getElementById("sides").value),qty=Math.max(1,Math.min(100,Number(document.getElementById("qty").value)||1)),mod=Number(document.getElementById("mod").value)||0;doRoll(sides,qty,mod,document.getElementById("rollLabel").value||"Rolagem livre")}
-function renderDice(root){root.innerHTML=heading("TERMINAL DE DADOS","Rolagens e histórico.")+`<div class="panel"><h2>ROLAGEM PERSONALIZADA</h2><div class="formgrid"><div><label>Dado</label><select id="sides">${[4,6,8,10,12,20,100].map(n=>`<option value="${n}">D${n}</option>`).join("")}</select></div><div><label>Quantidade</label><input id="qty" type="number" min="1" max="100" value="1"></div><div><label>Modificador</label><input id="mod" type="number" value="0"></div><div><label>Descrição</label><input id="rollLabel" value="Rolagem livre"></div></div><button class="btn" style="margin-top:13px" onclick="freeRoll()">ROLAR</button><div id="rollOutput">${lastRoll||""}</div></div><div class="panel"><div class="heading"><h2>HISTÓRICO</h2><button class="btn red sm" onclick="clearRolls()">LIMPAR</button></div>${db.rolls.map(r=>`<div class="entry"><b>${esc(r.label)}</b><span style="float:right;color:var(--bright);font-weight:bold">${r.total}</span><div class="muted">${esc(r.date)} • ${r.qty}D${r.sides} • ${r.results.join(" + ")} • Mod. ${r.mod}</div></div>`).join("")||'<div class="empty">Sem rolagens.</div>'}`}
+function renderDice(root){root.innerHTML=heading("TERMINAL DE DADOS","Rolagens e histórico.")+`<div class="panel"><h2>ROLAGEM PERSONALIZADA</h2><div class="formgrid"><div><label>Dado</label><select id="sides">${[4,6,8,10,12,20,100].map(n=>`<option value="${n}">D${n}</option>`).join("")}</select></div><div><label>Quantidade</label><input id="qty" type="number" min="1" max="100" value="1"></div><div><label>Modificador</label><input id="mod" type="number" value="0"></div><div><label>Descrição</label><input id="rollLabel" value="Rolagem livre"></div></div><button class="btn" style="margin-top:13px" onclick="freeRoll()">ROLAR</button><div id="rollOutput">${lastRoll||""}</div></div><div class="panel"><div class="heading"><h2>HISTÓRICO</h2><button class="btn red sm" onclick="clearRolls()">LIMPAR</button></div>${db.rolls.map(r=>`<div class="entry"><b>${esc(r.label)}</b><span style="float:right;color:var(--bright);text-shadow:0 0 18px rgba(143,209,106,.35);font-weight:bold">${r.total}</span><div class="muted">${esc(r.date)} • ${r.qty}D${r.sides} • ${r.results.join(" + ")} • Mod. ${r.mod}</div></div>`).join("")||'<div class="empty">Sem rolagens.</div>'}`}
 function clearRolls(){if(confirm("Limpar histórico?")){db.rolls=[];saveDB();render()}}
 
 /* CAMPANHAS */
