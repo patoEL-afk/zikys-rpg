@@ -1110,21 +1110,41 @@ function renderAgent(root,a){
     ${sections.map(([k,l])=>`<button class="sheet-center-btn" onclick="window._sheetSection='${k}';tab='${k}';render()">${l}</button>`).join("")}
   </div>
 </div>
-` : `<div style="margin-bottom:12px"><button class="btn gray sm" onclick="window._sheetSection='menu';render()">← VOLTAR AO MENU</button></div>
+` : `
+<div style="margin-bottom:12px"><button class="btn gray sm" onclick="window._sheetSection='menu';render()">← VOLTAR AO MENU</button></div>
 ${window._sheetSection==="descricao" ? `
 <div class="panel">
   <h2>DESCRIÇÃO / ANOTAÇÕES</h2>
   <div class="write-area" contenteditable="true" onblur="setField('${a.id}','description',this.innerText);setField('${a.id}','story',this.innerText);setField('${a.id}','notes',this.innerText)">${esc(a.description||a.story||a.notes||"")}</div>
   <div class="muted" style="margin-top:8px">Escreva aqui a história, características, curiosidades e regras do personagem.</div>
-</div>
-` : ""}
+</div>` : ""}
 ${window._sheetSection==="atributos" ? `
 <div class="panel">
   <h2>ATRIBUTOS E STATUS</h2>
   <div class="grid" id="resources">${a.resources.map(r=>resourceHTML(a,r)).join("")}</div>
   <div style="margin-top:12px"><button class="btn" onclick="addResource('${a.id}')">＋ ADICIONAR BARRA</button></div>
-</div>
-` : ""}`}<div id="sheetRollOutput" class="roll-output">${lastRoll||""}</div><div id="tabContent"></div>`;const c=document.getElementById("tabContent");({geral:generalTab,atributos:attributesTab,pericias:skillsTab,habilidades:abilitiesTab,inventario:inventoryTab,historia:storyTab,custom:customTab})[tab](c,a)}
+</div>` : ""}
+${window._sheetSection==="pericias" ? `
+<div class="panel">
+  <h2>PERÍCIAS</h2>
+  ${skillsHTML(a)}
+</div>` : ""}
+${window._sheetSection==="habilidades" ? `
+<div class="panel">
+  <h2>HABILIDADES</h2>
+  ${abilitiesHTML(a)}
+</div>` : ""}
+${window._sheetSection==="inventario" ? `
+<div class="panel">
+  <h2>INVENTÁRIO</h2>
+  ${inventoryHTML(a)}
+</div>` : ""}
+${window._sheetSection==="geral" ? `
+<div class="panel">
+  <h2>INFORMAÇÕES</h2>
+  <div class="muted">Nome, classe, sistema e imagem do personagem.</div>
+</div>` : ""}
+`}<div id="sheetRollOutput" class="roll-output">${lastRoll||""}</div><div id="tabContent"></div>`;const c=document.getElementById("tabContent");({geral:generalTab,atributos:attributesTab,pericias:skillsTab,habilidades:abilitiesTab,inventario:inventoryTab,historia:storyTab,custom:customTab})[tab](c,a)}
 function uploadPortrait(id,input){const f=input.files&&input.files[0];if(!f)return;if(!f.type.startsWith("image/"))return notify("Escolha uma imagem.");if(f.size>12*1024*1024)return notify("Imagem muito grande (limite 12 MB).");const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{const scale=Math.min(1,700/Math.max(im.width,im.height)),cv=document.createElement("canvas");cv.width=Math.round(im.width*scale);cv.height=Math.round(im.height*scale);cv.getContext("2d").drawImage(im,0,0,cv.width,cv.height);const a=findAgent(id),old=a.image;a.image=cv.toDataURL("image/jpeg",.82);if(!saveDB()){a.image=old;return}render();notify("Imagem salva!")};im.onerror=()=>notify("Não foi possível abrir a imagem.");im.src=rd.result};rd.onerror=()=>notify("Erro ao carregar imagem.");rd.readAsDataURL(f)}
 function removePortrait(id){const a=findAgent(id);if(!a||!a.image)return notify("Sem imagem.");if(!confirm("Remover a imagem?"))return;a.image="";saveDB();render()}
 function resourceHTML(a,r){const pct=Number(r.max)>0?Math.max(0,Math.min(100,100*Number(r.current)/Number(r.max))):0;return `<div class="resource"><div class="resourcehead"><strong>${esc(r.name)}</strong><span>${Number(r.current)} / ${Number(r.max)}</span></div><div class="bar"><div class="fill" style="width:${pct}%"></div></div><div class="resourcefields"><div><label>Atual</label><input type="number" value="${Number(r.current)}" onchange="setResource('${a.id}','${r.id}','current',this.value)"></div><div><label>Máximo</label><input type="number" min="0" value="${Number(r.max)}" onchange="setResource('${a.id}','${r.id}','max',this.value)"></div></div><div class="resourcebuttons"><button class="btn sm gray" onclick="resourceDelta('${a.id}','${r.id}',-1)">−1</button><button class="btn sm gray" onclick="resourceDelta('${a.id}','${r.id}',1)">+1</button><button class="btn sm gray" onclick="renameResource('${a.id}','${r.id}')">RENOMEAR</button><button class="btn sm red" onclick="removeResource('${a.id}','${r.id}')">×</button></div></div>`}
